@@ -3,10 +3,12 @@ package main
 import (
 	"sync/atomic"
 	"strings"
+	"github.com/StupidWeasel/bootdev-chirpy/internal/database"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	database *database.Queries
 }
 
 type chirpMessage struct{
