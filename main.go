@@ -9,6 +9,7 @@ import (
 	"os"
 	_ "github.com/lib/pq"
 )
+var ApiCFG apiConfig
 
 func main(){
 
@@ -24,9 +25,7 @@ func main(){
 	}
 	fmt.Println("Connected to database!")
 	dbQueries := database.New(db)
-	apiCFG := apiConfig{
-		database:	dbQueries,
-	}
+	ApiCFG.database = dbQueries
 
 	mux := http.NewServeMux()
 	server := http.Server{
@@ -34,11 +33,20 @@ func main(){
 		Handler: mux,
 	}
 	fs := http.FileServer(http.Dir("./webroot/"))
-	mux.Handle("/app/", http.StripPrefix("/app/",apiCFG.middlewareMetricsInc(fs)))
+	// App
+	mux.Handle("/app/", http.StripPrefix("/app/",ApiCFG.middlewareMetricsInc(fs)))
+	
+	// API
 	mux.HandleFunc("GET /api/healthz", readinessHandler)
-	mux.HandleFunc("GET /admin/metrics", apiCFG.metricsHandler)
-	mux.HandleFunc("POST /admin/reset", apiCFG.metricsResetHandler)
-	mux.HandleFunc("POST /api/validate_chirp", APIvalidateChirp)
+	mux.HandleFunc("POST /api/users", APICreateUser)
+	mux.HandleFunc("POST /api/chirps", APICreateMessage)
+	mux.HandleFunc("GET /api/chirps", APIGetMessages)
+	mux.HandleFunc("GET /api/chirps/{id}", APIGetMessage)
+
+	// Admin
+	mux.HandleFunc("GET /admin/metrics", ApiCFG.metricsHandler)
+	mux.HandleFunc("POST /admin/reset", adminResetHandler)
+
 	fmt.Println("Starting HTTPD on :8080")
 	server.ListenAndServe()
 

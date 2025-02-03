@@ -4,6 +4,8 @@ import (
 	"sync/atomic"
 	"strings"
 	"github.com/StupidWeasel/bootdev-chirpy/internal/database"
+	"github.com/google/uuid"
+	"time"
 )
 
 type apiConfig struct {
@@ -11,9 +13,35 @@ type apiConfig struct {
 	database *database.Queries
 }
 
-type chirpMessage struct{
-	Body string `json:"body"`
+type createChirpMessage struct{
+ 	Body string `json:"body"`
+ 	UserID uuid.UUID `json:"user_id"`
 }
+
+type chirpMessage struct{
+	ID uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+  	UpdatedAt time.Time `json:"updated_at"`
+	Body string `json:"body"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+type getchirpMessage struct{
+	ID uuid.UUID `json:"id"`
+}
+
+
+type chirpUser struct{
+  ID uuid.UUID `json:"id"`
+  CreatedAt time.Time `json:"created_at"`
+  UpdatedAt time.Time `json:"updated_at"`
+  Email string `json:"email"`
+}
+
+type createChirpUser struct{
+  Email string `json:"email"`
+}
+
 
 type apiResponse struct{
 	CleanedBody string `json:"cleaned_body"`
