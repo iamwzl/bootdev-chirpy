@@ -1,50 +1,50 @@
 package main
 
 import (
-	"sync/atomic"
-	"github.com/StupidWeasel/bootdev-chirpy/internal/database"
-	"github.com/google/uuid"
-	"time"
+  "sync/atomic"
+  "github.com/StupidWeasel/bootdev-chirpy/internal/database"
+  "github.com/google/uuid"
+  "time"
 )
 
 type apiConfig struct {
-	database *database.Queries
-	platform string
-	users userFuncs
-	admin adminFuncs
-	messages msgFuncs
-	metrics metricFuncs
+  database *database.Queries
+  platform string
+  users userFuncs
+  admin adminFuncs
+  messages msgFuncs
+  metrics metricFuncs
 }
 
 type userFuncs struct{
-	cfg *apiConfig
+  cfg *apiConfig
 }
 type adminFuncs struct{
-	cfg *apiConfig
+  cfg *apiConfig
 }
 type msgFuncs struct{
-	cfg *apiConfig
+  cfg *apiConfig
 }
 type metricFuncs struct{
-	fileserverHits atomic.Int32
-	cfg *apiConfig
+  fileserverHits atomic.Int32
+  cfg *apiConfig
 }
 
 type createChirpMessage struct{
- 	Body string `json:"body"`
- 	UserID uuid.UUID `json:"user_id"`
+  Body string `json:"body"`
+  UserID uuid.UUID `json:"user_id"`
 }
 
 type chirpMessage struct{
-	ID uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-  	UpdatedAt time.Time `json:"updated_at"`
-	Body string `json:"body"`
-	UserID uuid.UUID `json:"user_id"`
+  ID uuid.UUID `json:"id"`
+  CreatedAt time.Time `json:"created_at"`
+    UpdatedAt time.Time `json:"updated_at"`
+  Body string `json:"body"`
+  UserID uuid.UUID `json:"user_id"`
 }
 
 type getchirpMessage struct{
-	ID uuid.UUID `json:"id"`
+  ID uuid.UUID `json:"id"`
 }
 
 type chirpUser struct{
@@ -59,10 +59,10 @@ type createChirpUser struct{
 }
 
 type apiResponse struct{
-	CleanedBody string `json:"cleaned_body"`
+  CleanedBody string `json:"cleaned_body"`
 }
 
 type apiErrorResponse struct{
-	ErrorMsg string `json:"error"`
+  ErrorMsg string `json:"error"`
 }
 
