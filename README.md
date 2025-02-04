@@ -1,6 +1,6 @@
 # Boot.dev -- 18. Learn HTTP Servers
 
-![Go Gopher](https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/3elNhQu.png)
+![Go Gopher looking stylish](https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/3elNhQu.png)
 
 My work as part of the boot.dev Learn HTTP Servers course.
 
