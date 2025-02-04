@@ -3,6 +3,7 @@ package main
 import (
     "net/http"
     "github.com/StupidWeasel/bootdev-chirpy/internal/database"
+    "github.com/StupidWeasel/bootdev-chirpy/internal/auth"
     "errors"
     "database/sql"
     "github.com/google/uuid"
@@ -10,10 +11,22 @@ import (
 
 func (m *msgFuncs)CreateMessage(w http.ResponseWriter, r *http.Request){
 
+    token, err := auth.GetBearerToken(r.Header)
+    if err != nil{
+        respondWithError(w, http.StatusUnauthorized, "No auth token", err)
+        return
+    }
+
     var message createChirpMessage
-    err := UnmarshalJSON(r.Body, &message)
+    err = UnmarshalJSON(r.Body, &message)
     if err != nil{
         respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+        return
+    }
+
+    userid, err := auth.ValidateJWT(token, m.cfg.secret)
+    if err != nil {
+        respondWithError(w, http.StatusUnauthorized, "Invalid auth token", err)
         return
     }
 
@@ -24,7 +37,7 @@ func (m *msgFuncs)CreateMessage(w http.ResponseWriter, r *http.Request){
 
     params := database.CreateMessageParams{
         Body:   message.Body,
-        UserID: message.UserID,
+        UserID: userid,
     }
 
     result, err := m.cfg.database.CreateMessage(r.Context(),params)

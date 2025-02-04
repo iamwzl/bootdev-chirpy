@@ -22,6 +22,13 @@ func main(){
     if envPLATFORM == ""{
         log.Fatal("DB_URL is not set")
     }
+    envSECRET := os.Getenv("SECRET")
+    if envSECRET == ""{
+        log.Fatal("SECRET is not set")
+    }
+    if envSECRET == "biglongsecrethere"{
+        log.Fatal("Set a proper .env SECRET")
+    }
 
     db, err := sql.Open("postgres", envDBURL)
     if err != nil{
@@ -34,6 +41,7 @@ func main(){
     ApiCFG := apiConfig{
         database: dbQueries,
         platform: envPLATFORM,
+        secret: envSECRET,
     }
     ApiCFG.users.cfg = &ApiCFG
     dummyHash, err := auth.HashPassword("I love to sing-a, About a moon-a and a June-a and a spring-a")

@@ -4,6 +4,7 @@ import (
     "net/http"
     "github.com/StupidWeasel/bootdev-chirpy/internal/database"
     "github.com/StupidWeasel/bootdev-chirpy/internal/auth"
+    "time"
 )
 
 func (u *userFuncs)CreateUser(w http.ResponseWriter, r *http.Request){
@@ -52,6 +53,10 @@ func (u *userFuncs)LoginUser(w http.ResponseWriter, r *http.Request){
         return
     }
 
+    if user.ExpiresInSeconds==0 || user.ExpiresInSeconds>3600 {
+        user.ExpiresInSeconds = 3600
+    }
+
     result, err := u.cfg.database.LoginUser(r.Context(), user.Email)
     if err != nil{
         _ = auth.CheckPasswordHash(u.dummyHash, "I am a password")
@@ -63,10 +68,17 @@ func (u *userFuncs)LoginUser(w http.ResponseWriter, r *http.Request){
         return
     }
 
-    respondWithJSON(w, http.StatusOK, chirpUser{
+    token, err := auth.MakeJWT(result.ID, u.cfg.secret, time.Duration(user.ExpiresInSeconds)*time.Millisecond)
+    if err != nil{
+        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+        return
+    }
+
+    respondWithJSON(w, http.StatusOK, chirpUserLogin{
         ID: result.ID,
         CreatedAt: result.CreatedAt,
         UpdatedAt: result.UpdatedAt,
         Email: result.Email,
+        Token: token,
     })
 }

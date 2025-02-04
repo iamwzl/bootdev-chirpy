@@ -19,13 +19,13 @@ func TestCheckPasswordHash(t *testing.T) {
     password := "AppleOrange@BananaPear123"
     hash, _ := HashPassword(password)
 
-    err := CheckPasswordHash(password, hash)
+    err := CheckPasswordHash(hash, password)
     if err != nil {
         t.Error("CheckPasswordHash failed with matching password")
     }
 
     wrongPassword := "smashthestate"
-    err = CheckPasswordHash(wrongPassword, hash)
+    err = CheckPasswordHash(hash, wrongPassword)
     if err == nil {
         t.Error("CheckPasswordHash should fail with wrong password")
     }

@@ -10,6 +10,7 @@ import (
 type apiConfig struct {
   database *database.Queries
   platform string
+  secret string
   users userFuncs
   admin adminFuncs
   messages msgFuncs
@@ -33,13 +34,12 @@ type metricFuncs struct{
 
 type createChirpMessage struct{
   Body string `json:"body"`
-  UserID uuid.UUID `json:"user_id"`
 }
 
 type chirpMessage struct{
   ID uuid.UUID `json:"id"`
   CreatedAt time.Time `json:"created_at"`
-    UpdatedAt time.Time `json:"updated_at"`
+  UpdatedAt time.Time `json:"updated_at"`
   Body string `json:"body"`
   UserID uuid.UUID `json:"user_id"`
 }
@@ -55,6 +55,14 @@ type chirpUser struct{
   Email string `json:"email"`
 }
 
+type chirpUserLogin struct{
+  ID uuid.UUID `json:"id"`
+  CreatedAt time.Time `json:"created_at"`
+  UpdatedAt time.Time `json:"updated_at"`
+  Email string `json:"email"`
+  Token string `json:"token"`
+}
+
 type createChirpUser struct{
   Email string `json:"email"`
   Password string `json:"password"`
@@ -63,6 +71,7 @@ type createChirpUser struct{
 type loginChirpUser struct{
   Email string `json:"email"`
   Password string `json:"password"`
+  ExpiresInSeconds int32 `json:"expires_in_seconds"`
 }
 
 type apiResponse struct{
