@@ -2,15 +2,32 @@ package main
 
 import (
 	"sync/atomic"
-	"strings"
 	"github.com/StupidWeasel/bootdev-chirpy/internal/database"
 	"github.com/google/uuid"
 	"time"
 )
 
 type apiConfig struct {
-	fileserverHits atomic.Int32
 	database *database.Queries
+	platform string
+	users userFuncs
+	admin adminFuncs
+	messages msgFuncs
+	metrics metricFuncs
+}
+
+type userFuncs struct{
+	cfg *apiConfig
+}
+type adminFuncs struct{
+	cfg *apiConfig
+}
+type msgFuncs struct{
+	cfg *apiConfig
+}
+type metricFuncs struct{
+	fileserverHits atomic.Int32
+	cfg *apiConfig
 }
 
 type createChirpMessage struct{
@@ -30,7 +47,6 @@ type getchirpMessage struct{
 	ID uuid.UUID `json:"id"`
 }
 
-
 type chirpUser struct{
   ID uuid.UUID `json:"id"`
   CreatedAt time.Time `json:"created_at"`
@@ -42,7 +58,6 @@ type createChirpUser struct{
   Email string `json:"email"`
 }
 
-
 type apiResponse struct{
 	CleanedBody string `json:"cleaned_body"`
 }
@@ -51,14 +66,3 @@ type apiErrorResponse struct{
 	ErrorMsg string `json:"error"`
 }
 
-func (c chirpMessage) CleanedBody() string{
-	badWords := map[string]struct{}{"kerfuffle":{},"sharbert":{},"fornax":{}}
-	output := strings.Split(c.Body, " ")
-	for i,word := range output{
-		if _, exists := badWords[word]; exists {
-			output[i] = "****"
-			continue
-		}
-	}
-	return strings.Join(output, " ")
-}

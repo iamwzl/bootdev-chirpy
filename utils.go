@@ -2,23 +2,42 @@ package main
 
 import(
 	"encoding/json"
-    "fmt"
-    "io"
+	"fmt"
+	"io"
+	"net/http"
+	"log"
 )
 
-func UnmarshalJSON[T any](r io.Reader, v *T) error {
-    decoder := json.NewDecoder(r)
-    //decoder.DisallowUnknownFields()
-    if err := decoder.Decode(v); err != nil {
-        return fmt.Errorf("unmarshal JSON: %w", err)
-    }
-    return nil
+func UnmarshalJSON[T any](r io.Reader, v *T) error{
+	decoder := json.NewDecoder(r)
+	//decoder.DisallowUnknownFields()
+	if err := decoder.Decode(v); err != nil {
+		return fmt.Errorf("unmarshal JSON: %w", err)
+	}
+	return nil
+}
+// These are stolen from the lesson solution & are much cleaner than what I was doing before!
+// https://www.boot.dev/courses/learn-http-servers-golang
+func respondWithError(w http.ResponseWriter, code int, msg string, err error){
+	if err != nil {
+		log.Println(err)
+	}
+	if code > 499 {
+		log.Printf("Responding with 5XX error: %s", msg)
+	}
+	respondWithJSON(w, code, apiErrorResponse{
+		ErrorMsg: msg,
+	})
 }
 
-func MarshalJSONToString[T any](v T) (string, error) {
-    jsonData, err := json.Marshal(v)
-    if err != nil {
-        return "", fmt.Errorf("Unable to marshal JSON to string: %w", err)
-    }
-    return string(jsonData), nil
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}){
+	w.Header().Set("Content-Type", "application/json")
+	dat, err := json.Marshal(payload)
+	if err != nil {
+		log.Printf("Error marshalling JSON: %s", err)
+		w.WriteHeader(500)
+		return
+	}
+	w.WriteHeader(code)
+	w.Write(dat)
 }
