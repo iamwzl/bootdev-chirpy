@@ -3,6 +3,7 @@ import (
     "database/sql"
     "fmt"
     "github.com/joho/godotenv"
+    "github.com/StupidWeasel/bootdev-chirpy/internal/auth"
     "github.com/StupidWeasel/bootdev-chirpy/internal/database"
     "log"
     "net/http"
@@ -35,6 +36,11 @@ func main(){
         platform: envPLATFORM,
     }
     ApiCFG.users.cfg = &ApiCFG
+    dummyHash, err := auth.HashPassword("I love to sing-a, About a moon-a and a June-a and a spring-a")
+    if err != nil{
+        log.Fatalf("Unable to generate dummyhash: %s", err)
+    }
+    ApiCFG.users.dummyHash = dummyHash
     ApiCFG.admin.cfg = &ApiCFG
     ApiCFG.messages.cfg = &ApiCFG
     ApiCFG.metrics.cfg = &ApiCFG
@@ -56,6 +62,7 @@ func main(){
     mux.HandleFunc("POST /api/chirps", ApiCFG.messages.CreateMessage)
     mux.HandleFunc("GET /api/chirps", ApiCFG.messages.GetMessages)
     mux.HandleFunc("GET /api/chirps/{id}", ApiCFG.messages.GetMessage)
+    mux.HandleFunc("POST /api/login", ApiCFG.users.LoginUser)
 
     // Admin
     mux.HandleFunc("GET /admin/metrics", ApiCFG.metrics.metricsHandler)

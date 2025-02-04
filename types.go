@@ -1,9 +1,9 @@
 package main
 
 import (
-  "sync/atomic"
-  "github.com/StupidWeasel/bootdev-chirpy/internal/database"
   "github.com/google/uuid"
+  "github.com/StupidWeasel/bootdev-chirpy/internal/database"
+  "sync/atomic"
   "time"
 )
 
@@ -17,6 +17,7 @@ type apiConfig struct {
 }
 
 type userFuncs struct{
+  dummyHash string
   cfg *apiConfig
 }
 type adminFuncs struct{
@@ -56,6 +57,12 @@ type chirpUser struct{
 
 type createChirpUser struct{
   Email string `json:"email"`
+  Password string `json:"password"`
+}
+
+type loginChirpUser struct{
+  Email string `json:"email"`
+  Password string `json:"password"`
 }
 
 type apiResponse struct{
