@@ -4,7 +4,7 @@ VALUES ($1, $2)
 RETURNING *;
 
 -- name: UsersClear :exec
-TRUNCATE users, messages;
+TRUNCATE users, messages, refresh_tokens;
 
 -- name: LoginUser :one
 SELECT id, created_at, updated_at, email, hashed_password

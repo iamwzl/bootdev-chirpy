@@ -6,6 +6,7 @@ import(
     "io"
     "net/http"
     "log"
+    "github.com/lib/pq"
 )
 
 func UnmarshalJSON[T any](r io.Reader, v *T) error{
@@ -40,4 +41,13 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}){
     }
     w.WriteHeader(code)
     w.Write(dat)
+}
+
+func respondWithStatus(w http.ResponseWriter, code int){
+    w.WriteHeader(code)
+}
+
+func isDuplicateKeyError(err error)bool{
+    pgErr, ok := err.(*pq.Error)
+    return ok && pgErr.Code == "23505"
 }

@@ -71,6 +71,8 @@ func main(){
     mux.HandleFunc("GET /api/chirps", ApiCFG.messages.GetMessages)
     mux.HandleFunc("GET /api/chirps/{id}", ApiCFG.messages.GetMessage)
     mux.HandleFunc("POST /api/login", ApiCFG.users.LoginUser)
+    mux.HandleFunc("POST /api/refresh", ApiCFG.users.RefreshAuth)
+    mux.HandleFunc("POST /api/revoke", ApiCFG.users.RevokeRefreshToken)
 
     // Admin
     mux.HandleFunc("GET /admin/metrics", ApiCFG.metrics.metricsHandler)

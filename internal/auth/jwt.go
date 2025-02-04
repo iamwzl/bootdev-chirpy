@@ -8,9 +8,10 @@ import(
     "strings"
 )
 
-func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error){
+func MakeJWT(userID uuid.UUID, tokenSecret string)(string, error){  
+    expireTime := time.Duration(3600)*time.Millisecond
     claims := jwt.RegisteredClaims{
-        ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(expiresIn)),
+        ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(expireTime)),
         IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
         NotBefore: jwt.NewNumericDate(time.Now().UTC()),
         Issuer:    "chirpy",

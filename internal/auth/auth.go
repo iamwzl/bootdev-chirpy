@@ -2,6 +2,9 @@ package auth
 
 import(
     "golang.org/x/crypto/bcrypt"
+    "crypto/rand"
+    "fmt"
+    "encoding/hex"
 )
 
 func HashPassword(password string) (string, error){
@@ -13,4 +16,13 @@ func HashPassword(password string) (string, error){
 }
 func CheckPasswordHash(hash string, password string) error{
     return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+}
+
+func MakeRefreshToken()(string, error){
+    tokenBytes := make([]byte, 32)
+    _, err := rand.Read(tokenBytes)
+    if err != nil {
+        return "", fmt.Errorf("failed to generate random bytes: %w", err)
+    }
+    return hex.EncodeToString(tokenBytes), nil
 }

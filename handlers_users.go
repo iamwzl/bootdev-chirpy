@@ -4,11 +4,12 @@ import (
     "net/http"
     "github.com/StupidWeasel/bootdev-chirpy/internal/database"
     "github.com/StupidWeasel/bootdev-chirpy/internal/auth"
-    "time"
+    "errors"
+    "github.com/google/uuid"
+    "database/sql"
 )
 
 func (u *userFuncs)CreateUser(w http.ResponseWriter, r *http.Request){
-
     var user createChirpUser
     err := UnmarshalJSON(r.Body, &user)
     if err != nil{
@@ -44,17 +45,37 @@ func (u *userFuncs)CreateUser(w http.ResponseWriter, r *http.Request){
     })
 }
 
-func (u *userFuncs)LoginUser(w http.ResponseWriter, r *http.Request){
+func (u *userFuncs)createRefreshToken(user uuid.UUID, r *http.Request)(string, error){
+    for attempts := 0; attempts <= 3; attempts++ {
+        token, err := auth.MakeRefreshToken()
+        if err != nil {
+            return "", err
+        }
 
+        params := database.AddRefreshTokenParams {
+            Token: token,
+            UserID: user,
+        }
+
+        err = u.cfg.database.AddRefreshToken(r.Context(), params)
+        if err == nil {
+            return token, nil
+        }
+        
+        if !isDuplicateKeyError(err) {
+            return "", err
+        }
+    }
+    return "", errors.New("failed to generate unique token")
+}
+
+
+func (u *userFuncs)LoginUser(w http.ResponseWriter, r *http.Request){
     var user loginChirpUser
     err := UnmarshalJSON(r.Body, &user)
     if err != nil{
         respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
         return
-    }
-
-    if user.ExpiresInSeconds==0 || user.ExpiresInSeconds>3600 {
-        user.ExpiresInSeconds = 3600
     }
 
     result, err := u.cfg.database.LoginUser(r.Context(), user.Email)
@@ -68,7 +89,13 @@ func (u *userFuncs)LoginUser(w http.ResponseWriter, r *http.Request){
         return
     }
 
-    token, err := auth.MakeJWT(result.ID, u.cfg.secret, time.Duration(user.ExpiresInSeconds)*time.Millisecond)
+    token, err := auth.MakeJWT(result.ID, u.cfg.secret)
+    if err != nil{
+        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+        return
+    }
+
+    refreshToken, err := u.createRefreshToken(result.ID, r)
     if err != nil{
         respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
         return
@@ -80,5 +107,49 @@ func (u *userFuncs)LoginUser(w http.ResponseWriter, r *http.Request){
         UpdatedAt: result.UpdatedAt,
         Email: result.Email,
         Token: token,
+        RefreshToken: refreshToken,
     })
+}
+
+func (u *userFuncs)RefreshAuth(w http.ResponseWriter, r *http.Request){
+    refreshToken, err := auth.GetBearerToken(r.Header)
+    if err != nil{
+        respondWithError(w, http.StatusUnauthorized, "No refresh token", err)
+        return
+    }
+    user_id, err := u.cfg.database.GetRefreshToken(r.Context(), refreshToken)
+    if err != nil{
+        if errors.Is(err, sql.ErrNoRows) {
+            respondWithError(w, http.StatusUnauthorized, "No refresh token", err)
+            return
+        }
+        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+        return
+    }
+
+    authToken, err := auth.MakeJWT(user_id, u.cfg.secret)
+    if err != nil{
+        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+        return
+    }
+
+     respondWithJSON(w, http.StatusOK, chirpRefreshAuth{
+        Token: authToken,
+     })
+
+}
+
+func (u *userFuncs)RevokeRefreshToken(w http.ResponseWriter, r *http.Request){
+    refreshToken, err := auth.GetBearerToken(r.Header)
+    if err != nil{
+        respondWithError(w, http.StatusUnauthorized, "No refresh token", err)
+        return
+    }
+
+    err = u.cfg.database.RevokeRefreshToken(r.Context(), refreshToken)
+    if err != nil{
+        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+        return
+    }
+    respondWithStatus(w, http.StatusNoContent)
 }

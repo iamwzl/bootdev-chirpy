@@ -66,7 +66,7 @@ func (q *Queries) LoginUser(ctx context.Context, email string) (LoginUserRow, er
 }
 
 const usersClear = `-- name: UsersClear :exec
-TRUNCATE users, messages
+TRUNCATE users, messages, refresh_tokens
 `
 
 func (q *Queries) UsersClear(ctx context.Context) error {
