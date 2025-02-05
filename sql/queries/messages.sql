@@ -8,6 +8,12 @@ SELECT id, created_at, updated_at, body, user_id
 FROM messages
 ORDER BY created_at ASC;
 
+-- name: GetMessages_ByAuthor_CreatedAtASC :many
+SELECT id, created_at, updated_at, body, user_id
+FROM messages
+WHERE user_id = $1
+ORDER BY created_at ASC;
+
 -- name: GetMessage :one
 SELECT id, created_at, updated_at, body, user_id
 FROM messages

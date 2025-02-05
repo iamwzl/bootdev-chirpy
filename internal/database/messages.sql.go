@@ -73,6 +73,42 @@ func (q *Queries) GetMessage(ctx context.Context, id uuid.UUID) (Message, error)
 	return i, err
 }
 
+const getMessages_ByAuthor_CreatedAtASC = `-- name: GetMessages_ByAuthor_CreatedAtASC :many
+SELECT id, created_at, updated_at, body, user_id
+FROM messages
+WHERE user_id = $1
+ORDER BY created_at ASC
+`
+
+func (q *Queries) GetMessages_ByAuthor_CreatedAtASC(ctx context.Context, userID uuid.UUID) ([]Message, error) {
+	rows, err := q.db.QueryContext(ctx, getMessages_ByAuthor_CreatedAtASC, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Message
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Body,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMessages_CreatedAtASC = `-- name: GetMessages_CreatedAtASC :many
 SELECT id, created_at, updated_at, body, user_id
 FROM messages

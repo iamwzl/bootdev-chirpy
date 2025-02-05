@@ -7,6 +7,7 @@ import (
     "errors"
     "database/sql"
     "github.com/google/uuid"
+    "strings"
 )
 
 func (m *msgFuncs)CreateMessage(w http.ResponseWriter, r *http.Request){
@@ -56,10 +57,36 @@ func (m *msgFuncs)CreateMessage(w http.ResponseWriter, r *http.Request){
 
 func (m *msgFuncs)GetMessages(w http.ResponseWriter, r *http.Request){
 
-    results, err := m.cfg.database.GetMessages_CreatedAtASC(r.Context())
-    if err != nil{
-        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-        return
+    authorString := r.URL.Query().Get("author_id")
+    sortDesc := strings.ToLower(r.URL.Query().Get("sort")) == "desc"
+
+    var results []database.Message
+    if authorString == ""{
+        theseResults, err := m.cfg.database.GetMessages_CreatedAtASC(r.Context())
+        if err != nil{
+            respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+            return
+        }
+        results = theseResults
+    }else{
+        authorID, err := uuid.Parse(authorString)
+        if err != nil{
+            respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+            return
+        }
+        theseResults, err := m.cfg.database.GetMessages_ByAuthor_CreatedAtASC(r.Context(),authorID)
+        if err != nil{
+            respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+            return
+        }
+        results = theseResults
+    }
+
+    if sortDesc{
+        for i := 0; i < len(results)/2; i++ {
+            j := len(results) - i - 1
+            results[i], results[j] = results[j], results[i]
+        }
     }
 
     messages := make([]chirpMessage, len(results),len(results))
@@ -73,7 +100,7 @@ func (m *msgFuncs)GetMessages(w http.ResponseWriter, r *http.Request){
         }
     }
 
-    respondWithJSON(w, http.StatusCreated, messages)
+    respondWithJSON(w, http.StatusOK, messages)
 }
 
 func (m *msgFuncs)GetMessage(w http.ResponseWriter, r *http.Request){
