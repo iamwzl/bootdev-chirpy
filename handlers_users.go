@@ -42,6 +42,7 @@ func (u *userFuncs)CreateUser(w http.ResponseWriter, r *http.Request){
         CreatedAt: result.CreatedAt,
         UpdatedAt: result.UpdatedAt,
         Email: result.Email,
+        ChirpyRed: result.IsChirpyRed,
     })
 }
 
@@ -108,6 +109,7 @@ func (u *userFuncs)LoginUser(w http.ResponseWriter, r *http.Request){
         Email: result.Email,
         Token: token,
         RefreshToken: refreshToken,
+        ChirpyRed: result.IsChirpyRed,
     })
 }
 
@@ -202,5 +204,6 @@ func (u *userFuncs)UserUpdateSelf(w http.ResponseWriter, r *http.Request){
         CreatedAt: result.CreatedAt,
         UpdatedAt: result.UpdatedAt,
         Email: result.Email,
+        ChirpyRed: result.IsChirpyRed,
     })
 }

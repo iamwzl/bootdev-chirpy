@@ -7,7 +7,7 @@ RETURNING *;
 TRUNCATE users, messages, refresh_tokens;
 
 -- name: LoginUser :one
-SELECT id, created_at, updated_at, email, hashed_password
+SELECT id, created_at, updated_at, email, hashed_password, is_chirpy_red
 FROM users
 WHERE (email = $1)
 LIMIT 1;
@@ -17,3 +17,8 @@ UPDATE users
 SET email = $2, hashed_password = $3
 WHERE id = $1
 Returning *;
+
+-- name: UserUpgradeToRed :execrows
+Update users
+SET is_chirpy_red = TRUE
+WHERE id = $1;

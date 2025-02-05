@@ -11,10 +11,12 @@ type apiConfig struct {
   database *database.Queries
   platform string
   secret string
+  polkakey string
   users userFuncs
   admin adminFuncs
   messages msgFuncs
   metrics metricFuncs
+  polka polkaFuncs
 }
 
 type userFuncs struct{
@@ -29,6 +31,9 @@ type msgFuncs struct{
 }
 type metricFuncs struct{
   fileserverHits atomic.Int32
+  cfg *apiConfig
+}
+type polkaFuncs struct{
   cfg *apiConfig
 }
 
@@ -53,6 +58,7 @@ type chirpUser struct{
   CreatedAt time.Time `json:"created_at"`
   UpdatedAt time.Time `json:"updated_at"`
   Email string `json:"email"`
+  ChirpyRed bool `json:"is_chirpy_red"`
 }
 
 type chirpUserLogin struct{
@@ -62,6 +68,7 @@ type chirpUserLogin struct{
   Email string `json:"email"`
   Token string `json:"token"`
   RefreshToken string `json:"refresh_token"`
+  ChirpyRed bool `json:"is_chirpy_red"`
 }
 
 type chirpRefreshAuth struct{
@@ -93,3 +100,9 @@ type apiErrorResponse struct{
   ErrorMsg string `json:"error"`
 }
 
+type PolkaRequest struct {
+  Event string `json:"event"`
+  Data  struct {
+    UserID string `json:"user_id"`
+  } `json:"data"`
+}

@@ -29,6 +29,13 @@ func main(){
     if envSECRET == "biglongsecrethere"{
         log.Fatal("Set a proper .env SECRET")
     }
+    envPOLKAKEY := os.Getenv("POLKAKEY")
+    if envPOLKAKEY == ""{
+        log.Fatal("POLKAKEY is not set")
+    }
+    if envPOLKAKEY == "keyhere"{
+        log.Fatal("Set a proper .env POLKAKEY")
+    }
 
     db, err := sql.Open("postgres", envDBURL)
     if err != nil{
@@ -42,6 +49,7 @@ func main(){
         database: dbQueries,
         platform: envPLATFORM,
         secret: envSECRET,
+        polkakey : envPOLKAKEY,
     }
     ApiCFG.users.cfg = &ApiCFG
     dummyHash, err := auth.HashPassword("I love to sing-a, About a moon-a and a June-a and a spring-a")
@@ -52,6 +60,7 @@ func main(){
     ApiCFG.admin.cfg = &ApiCFG
     ApiCFG.messages.cfg = &ApiCFG
     ApiCFG.metrics.cfg = &ApiCFG
+    ApiCFG.polka.cfg = &ApiCFG
 
     // Server Mux
     mux := http.NewServeMux()
@@ -66,15 +75,19 @@ func main(){
     
     // API
     mux.HandleFunc("GET /api/healthz", readinessHandler)
+    // API - Users
     mux.HandleFunc("POST /api/users", ApiCFG.users.CreateUser)
     mux.HandleFunc("PUT /api/users", ApiCFG.users.UserUpdateSelf)
+    mux.HandleFunc("POST /api/login", ApiCFG.users.LoginUser)
+    mux.HandleFunc("POST /api/refresh", ApiCFG.users.RefreshAuth)
+    mux.HandleFunc("POST /api/revoke", ApiCFG.users.RevokeRefreshToken)
+    // API - Messages
     mux.HandleFunc("POST /api/chirps", ApiCFG.messages.CreateMessage)
     mux.HandleFunc("GET /api/chirps", ApiCFG.messages.GetMessages)
     mux.HandleFunc("GET /api/chirps/{id}", ApiCFG.messages.GetMessage)
     mux.HandleFunc("DELETE /api/chirps/{id}", ApiCFG.messages.DeleteMessage)
-    mux.HandleFunc("POST /api/login", ApiCFG.users.LoginUser)
-    mux.HandleFunc("POST /api/refresh", ApiCFG.users.RefreshAuth)
-    mux.HandleFunc("POST /api/revoke", ApiCFG.users.RevokeRefreshToken)
+    // API - Polka
+    mux.HandleFunc("POST /api/polka/webhooks", ApiCFG.polka.Webhook)
 
     // Admin
     mux.HandleFunc("GET /admin/metrics", ApiCFG.metrics.metricsHandler)

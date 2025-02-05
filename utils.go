@@ -7,6 +7,7 @@ import(
     "net/http"
     "log"
     "github.com/lib/pq"
+    "strings"
 )
 
 func UnmarshalJSON[T any](r io.Reader, v *T) error{
@@ -50,4 +51,16 @@ func respondWithStatus(w http.ResponseWriter, code int){
 func isDuplicateKeyError(err error)bool{
     pgErr, ok := err.(*pq.Error)
     return ok && pgErr.Code == "23505"
+}
+
+func GetAPIKey(headers http.Header) (string, error){
+    authHeader := headers.Get("Authorization")
+    if authHeader == ""{
+        return "", fmt.Errorf("No authorized header")
+    }
+    splitHeader := strings.Split(authHeader," ")
+    if len(splitHeader)!=2 || splitHeader[0] != "ApiKey"{
+        return "", fmt.Errorf("Malformed header")
+    } 
+    return splitHeader[1], nil
 }

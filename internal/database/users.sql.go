@@ -15,7 +15,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, hashed_password)
 VALUES ($1, $2)
-RETURNING id, created_at, updated_at, email, hashed_password, password_reset_required
+RETURNING id, created_at, updated_at, email, hashed_password, password_reset_required, is_chirpy_red
 `
 
 type CreateUserParams struct {
@@ -33,12 +33,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Email,
 		&i.HashedPassword,
 		&i.PasswordResetRequired,
+		&i.IsChirpyRed,
 	)
 	return i, err
 }
 
 const loginUser = `-- name: LoginUser :one
-SELECT id, created_at, updated_at, email, hashed_password
+SELECT id, created_at, updated_at, email, hashed_password, is_chirpy_red
 FROM users
 WHERE (email = $1)
 LIMIT 1
@@ -50,6 +51,7 @@ type LoginUserRow struct {
 	UpdatedAt      time.Time
 	Email          string
 	HashedPassword string
+	IsChirpyRed    bool
 }
 
 func (q *Queries) LoginUser(ctx context.Context, email string) (LoginUserRow, error) {
@@ -61,6 +63,7 @@ func (q *Queries) LoginUser(ctx context.Context, email string) (LoginUserRow, er
 		&i.UpdatedAt,
 		&i.Email,
 		&i.HashedPassword,
+		&i.IsChirpyRed,
 	)
 	return i, err
 }
@@ -69,7 +72,7 @@ const userUpdateSelf = `-- name: UserUpdateSelf :one
 UPDATE users
 SET email = $2, hashed_password = $3
 WHERE id = $1
-Returning id, created_at, updated_at, email, hashed_password, password_reset_required
+Returning id, created_at, updated_at, email, hashed_password, password_reset_required, is_chirpy_red
 `
 
 type UserUpdateSelfParams struct {
@@ -88,8 +91,23 @@ func (q *Queries) UserUpdateSelf(ctx context.Context, arg UserUpdateSelfParams) 
 		&i.Email,
 		&i.HashedPassword,
 		&i.PasswordResetRequired,
+		&i.IsChirpyRed,
 	)
 	return i, err
+}
+
+const userUpgradeToRed = `-- name: UserUpgradeToRed :execrows
+Update users
+SET is_chirpy_red = TRUE
+WHERE id = $1
+`
+
+func (q *Queries) UserUpgradeToRed(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.ExecContext(ctx, userUpgradeToRed, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const usersClear = `-- name: UsersClear :exec

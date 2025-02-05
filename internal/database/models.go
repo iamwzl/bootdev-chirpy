@@ -35,4 +35,5 @@ type User struct {
 	Email                 string
 	HashedPassword        string
 	PasswordResetRequired bool
+	IsChirpyRed           bool
 }
