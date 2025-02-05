@@ -101,3 +101,57 @@ func (m *msgFuncs)GetMessage(w http.ResponseWriter, r *http.Request){
         UserID: result.UserID,
     })
 }
+
+func (m *msgFuncs)DeleteMessage(w http.ResponseWriter, r *http.Request){
+    authToken, err := auth.GetBearerToken(r.Header)
+    if err != nil{
+        respondWithError(w, http.StatusUnauthorized, "No auth token", err)
+        return
+    }
+
+    userid, err := auth.ValidateJWT(authToken, m.cfg.secret)
+    if err != nil {
+        respondWithError(w, http.StatusUnauthorized, "Invalid auth token", err)
+        return
+    }
+
+    messageID, err := uuid.Parse(r.PathValue("id"))
+    if err != nil{
+        respondWithError(w, http.StatusBadRequest, "No message id provided", err)
+        return
+    }
+
+
+    result, err := m.cfg.database.GetMessage(r.Context(), messageID)
+    if err != nil{
+        if errors.Is(err, sql.ErrNoRows) {
+            respondWithError(w, http.StatusNotFound, "Message not found", err)
+            return
+        }
+        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+        return
+    }
+
+    if result.UserID != userid{
+        respondWithError(w, http.StatusForbidden, "Not your message", err)
+        return
+    }
+
+    params := database.DeleteMessageParams{
+        ID: messageID,
+        UserID: userid,
+    }
+
+    numRows, err := m.cfg.database.DeleteMessage(r.Context(),params)
+    if err != nil{
+        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+        return
+    }
+
+    if numRows==0{
+        respondWithError(w, http.StatusNotFound, "Message not found", err)
+        return
+    }
+
+    respondWithStatus(w, http.StatusNoContent)
+}

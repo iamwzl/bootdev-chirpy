@@ -8,7 +8,7 @@ FROM refresh_tokens
 WHERE (token = $1 AND expires_at>CURRENT_TIMESTAMP AND revoked_at IS NULL)
 LIMIT 1;
 
--- name: RevokeRefreshToken :exec
+-- name: RevokeRefreshToken :execrows
 UPDATE refresh_tokens
 SET revoked_at = CURRENT_TIMESTAMP
 WHERE token = $1;

@@ -13,3 +13,7 @@ SELECT id, created_at, updated_at, body, user_id
 FROM messages
 WHERE id = $1
 LIMIT 1;
+
+-- name: DeleteMessage :execrows
+DELETE FROM messages
+WHERE id = $1 AND user_id = $2;

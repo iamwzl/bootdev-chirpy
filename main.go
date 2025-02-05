@@ -67,9 +67,11 @@ func main(){
     // API
     mux.HandleFunc("GET /api/healthz", readinessHandler)
     mux.HandleFunc("POST /api/users", ApiCFG.users.CreateUser)
+    mux.HandleFunc("PUT /api/users", ApiCFG.users.UserUpdateSelf)
     mux.HandleFunc("POST /api/chirps", ApiCFG.messages.CreateMessage)
     mux.HandleFunc("GET /api/chirps", ApiCFG.messages.GetMessages)
     mux.HandleFunc("GET /api/chirps/{id}", ApiCFG.messages.GetMessage)
+    mux.HandleFunc("DELETE /api/chirps/{id}", ApiCFG.messages.DeleteMessage)
     mux.HandleFunc("POST /api/login", ApiCFG.users.LoginUser)
     mux.HandleFunc("POST /api/refresh", ApiCFG.users.RefreshAuth)
     mux.HandleFunc("POST /api/revoke", ApiCFG.users.RevokeRefreshToken)

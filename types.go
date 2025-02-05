@@ -73,6 +73,12 @@ type createChirpUser struct{
   Password string `json:"password"`
 }
 
+type updateChirpUser struct{
+  ID uuid.UUID
+  Email string `json:"email"`
+  Password string `json:"password"`
+}
+
 type loginChirpUser struct{
   Email string `json:"email"`
   Password string `json:"password"`

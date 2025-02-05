@@ -35,6 +35,24 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 	return i, err
 }
 
+const deleteMessage = `-- name: DeleteMessage :execrows
+DELETE FROM messages
+WHERE id = $1 AND user_id = $2
+`
+
+type DeleteMessageParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) DeleteMessage(ctx context.Context, arg DeleteMessageParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteMessage, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getMessage = `-- name: GetMessage :one
 SELECT id, created_at, updated_at, body, user_id
 FROM messages

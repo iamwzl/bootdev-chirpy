@@ -65,6 +65,33 @@ func (q *Queries) LoginUser(ctx context.Context, email string) (LoginUserRow, er
 	return i, err
 }
 
+const userUpdateSelf = `-- name: UserUpdateSelf :one
+UPDATE users
+SET email = $2, hashed_password = $3
+WHERE id = $1
+Returning id, created_at, updated_at, email, hashed_password, password_reset_required
+`
+
+type UserUpdateSelfParams struct {
+	ID             uuid.UUID
+	Email          string
+	HashedPassword string
+}
+
+func (q *Queries) UserUpdateSelf(ctx context.Context, arg UserUpdateSelfParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, userUpdateSelf, arg.ID, arg.Email, arg.HashedPassword)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.HashedPassword,
+		&i.PasswordResetRequired,
+	)
+	return i, err
+}
+
 const usersClear = `-- name: UsersClear :exec
 TRUNCATE users, messages, refresh_tokens
 `

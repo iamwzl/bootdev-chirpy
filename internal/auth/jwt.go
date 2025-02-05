@@ -26,7 +26,16 @@ func MakeJWT(userID uuid.UUID, tokenSecret string)(string, error){
     return ss, nil
 }
 
+func maybeJWT(token string) bool{
+    return len(strings.Split(token,"."))==3
+}
+
 func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error){
+
+    if !maybeJWT(tokenString){
+        return uuid.UUID{}, fmt.Errorf("Invalid JWT structure")
+    }
+
     claims := &jwt.RegisteredClaims{}
     _, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
             if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

@@ -146,10 +146,61 @@ func (u *userFuncs)RevokeRefreshToken(w http.ResponseWriter, r *http.Request){
         return
     }
 
-    err = u.cfg.database.RevokeRefreshToken(r.Context(), refreshToken)
+    numRows, err := u.cfg.database.RevokeRefreshToken(r.Context(), refreshToken)
     if err != nil{
         respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
         return
     }
+
+    if numRows==0{
+        respondWithError(w, http.StatusNotFound, "No token found", err)
+        return
+    }
     respondWithStatus(w, http.StatusNoContent)
+}
+
+func (u *userFuncs)UserUpdateSelf(w http.ResponseWriter, r *http.Request){
+    var user updateChirpUser
+    err := UnmarshalJSON(r.Body, &user)
+    if err != nil{
+        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+        return
+    }
+
+    authToken, err := auth.GetBearerToken(r.Header)
+    if err != nil{
+        respondWithError(w, http.StatusUnauthorized, "No auth token", err)
+        return
+    }
+
+    userid, err := auth.ValidateJWT(authToken, u.cfg.secret)
+    if err != nil {
+        respondWithError(w, http.StatusUnauthorized, "Invalid auth token", err)
+        return
+    }
+
+    passwordHash, err := auth.HashPassword(user.Password)
+    if err != nil{
+        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+        return
+    }
+
+    params := database.UserUpdateSelfParams{
+        ID: userid,
+        Email: user.Email,
+        HashedPassword: passwordHash,
+    }
+
+    result, err := u.cfg.database.UserUpdateSelf(r.Context(), params)
+    if err != nil{
+        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+        return
+    }
+
+    respondWithJSON(w, http.StatusOK, chirpUser{
+        ID: result.ID,
+        CreatedAt: result.CreatedAt,
+        UpdatedAt: result.UpdatedAt,
+        Email: result.Email,
+    })
 }

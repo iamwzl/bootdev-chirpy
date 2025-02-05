@@ -40,13 +40,16 @@ func (q *Queries) GetRefreshToken(ctx context.Context, token string) (uuid.UUID,
 	return user_id, err
 }
 
-const revokeRefreshToken = `-- name: RevokeRefreshToken :exec
+const revokeRefreshToken = `-- name: RevokeRefreshToken :execrows
 UPDATE refresh_tokens
 SET revoked_at = CURRENT_TIMESTAMP
 WHERE token = $1
 `
 
-func (q *Queries) RevokeRefreshToken(ctx context.Context, token string) error {
-	_, err := q.db.ExecContext(ctx, revokeRefreshToken, token)
-	return err
+func (q *Queries) RevokeRefreshToken(ctx context.Context, token string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, revokeRefreshToken, token)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
