@@ -1,209 +1,208 @@
 package main
 
 import (
-    "net/http"
-    "github.com/StupidWeasel/bootdev-chirpy/internal/database"
-    "github.com/StupidWeasel/bootdev-chirpy/internal/auth"
-    "errors"
-    "github.com/google/uuid"
-    "database/sql"
+	"database/sql"
+	"errors"
+	"github.com/StupidWeasel/bootdev-chirpy/internal/auth"
+	"github.com/StupidWeasel/bootdev-chirpy/internal/database"
+	"github.com/google/uuid"
+	"net/http"
 )
 
-func (u *userFuncs)CreateUser(w http.ResponseWriter, r *http.Request){
-    var user createChirpUser
-    err := UnmarshalJSON(r.Body, &user)
-    if err != nil{
-        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-        return
-    }
-    if len(user.Email)==0{
-        respondWithError(w, http.StatusBadRequest, "Email is empty", nil)
-        return
-    }
+func (u *userFuncs) CreateUser(w http.ResponseWriter, r *http.Request) {
+	var user createChirpUser
+	err := UnmarshalJSON(r.Body, &user)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
+	if len(user.Email) == 0 {
+		respondWithError(w, http.StatusBadRequest, "Email is empty", nil)
+		return
+	}
 
-    passwordHash, err := auth.HashPassword(user.Password)
-    if err != nil{
-        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-        return
-    }
+	passwordHash, err := auth.HashPassword(user.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
 
-    params := database.CreateUserParams{
-        Email:   user.Email,
-        HashedPassword: passwordHash,
-    }
+	params := database.CreateUserParams{
+		Email:          user.Email,
+		HashedPassword: passwordHash,
+	}
 
-    result, err := u.cfg.database.CreateUser(r.Context(), params)
-    if err != nil{
-        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-        return
-    }
-    respondWithJSON(w, http.StatusCreated, chirpUser{
-        ID: result.ID,
-        CreatedAt: result.CreatedAt,
-        UpdatedAt: result.UpdatedAt,
-        Email: result.Email,
-        ChirpyRed: result.IsChirpyRed,
-    })
+	result, err := u.cfg.database.CreateUser(r.Context(), params)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
+	respondWithJSON(w, http.StatusCreated, chirpUser{
+		ID:        result.ID,
+		CreatedAt: result.CreatedAt,
+		UpdatedAt: result.UpdatedAt,
+		Email:     result.Email,
+		ChirpyRed: result.IsChirpyRed,
+	})
 }
 
-func (u *userFuncs)createRefreshToken(user uuid.UUID, r *http.Request)(string, error){
-    for attempts := 0; attempts <= 3; attempts++ {
-        token, err := auth.MakeRefreshToken()
-        if err != nil {
-            return "", err
-        }
+func (u *userFuncs) createRefreshToken(user uuid.UUID, r *http.Request) (string, error) {
+	for attempts := 0; attempts <= 3; attempts++ {
+		token, err := auth.MakeRefreshToken()
+		if err != nil {
+			return "", err
+		}
 
-        params := database.AddRefreshTokenParams {
-            Token: token,
-            UserID: user,
-        }
+		params := database.AddRefreshTokenParams{
+			Token:  token,
+			UserID: user,
+		}
 
-        err = u.cfg.database.AddRefreshToken(r.Context(), params)
-        if err == nil {
-            return token, nil
-        }
-        
-        if !isDuplicateKeyError(err) {
-            return "", err
-        }
-    }
-    return "", errors.New("failed to generate unique token")
+		err = u.cfg.database.AddRefreshToken(r.Context(), params)
+		if err == nil {
+			return token, nil
+		}
+
+		if !isDuplicateKeyError(err) {
+			return "", err
+		}
+	}
+	return "", errors.New("failed to generate unique token")
 }
 
+func (u *userFuncs) LoginUser(w http.ResponseWriter, r *http.Request) {
+	var user loginChirpUser
+	err := UnmarshalJSON(r.Body, &user)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
 
-func (u *userFuncs)LoginUser(w http.ResponseWriter, r *http.Request){
-    var user loginChirpUser
-    err := UnmarshalJSON(r.Body, &user)
-    if err != nil{
-        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-        return
-    }
+	result, err := u.cfg.database.LoginUser(r.Context(), user.Email)
+	if err != nil {
+		_ = auth.CheckPasswordHash(u.dummyHash, "I am a password")
+		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
+		return
+	}
+	if auth.CheckPasswordHash(result.HashedPassword, user.Password) != nil {
+		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
+		return
+	}
 
-    result, err := u.cfg.database.LoginUser(r.Context(), user.Email)
-    if err != nil{
-        _ = auth.CheckPasswordHash(u.dummyHash, "I am a password")
-        respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
-        return
-    }
-    if auth.CheckPasswordHash(result.HashedPassword, user.Password) != nil{
-        respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
-        return
-    }
+	token, err := auth.MakeJWT(result.ID, u.cfg.secret)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
 
-    token, err := auth.MakeJWT(result.ID, u.cfg.secret)
-    if err != nil{
-        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-        return
-    }
+	refreshToken, err := u.createRefreshToken(result.ID, r)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
 
-    refreshToken, err := u.createRefreshToken(result.ID, r)
-    if err != nil{
-        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-        return
-    }
-
-    respondWithJSON(w, http.StatusOK, chirpUserLogin{
-        ID: result.ID,
-        CreatedAt: result.CreatedAt,
-        UpdatedAt: result.UpdatedAt,
-        Email: result.Email,
-        Token: token,
-        RefreshToken: refreshToken,
-        ChirpyRed: result.IsChirpyRed,
-    })
+	respondWithJSON(w, http.StatusOK, chirpUserLogin{
+		ID:           result.ID,
+		CreatedAt:    result.CreatedAt,
+		UpdatedAt:    result.UpdatedAt,
+		Email:        result.Email,
+		Token:        token,
+		RefreshToken: refreshToken,
+		ChirpyRed:    result.IsChirpyRed,
+	})
 }
 
-func (u *userFuncs)RefreshAuth(w http.ResponseWriter, r *http.Request){
-    refreshToken, err := auth.GetBearerToken(r.Header)
-    if err != nil{
-        respondWithError(w, http.StatusUnauthorized, "No refresh token", err)
-        return
-    }
-    user_id, err := u.cfg.database.GetRefreshToken(r.Context(), refreshToken)
-    if err != nil{
-        if errors.Is(err, sql.ErrNoRows) {
-            respondWithError(w, http.StatusUnauthorized, "No refresh token", err)
-            return
-        }
-        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-        return
-    }
+func (u *userFuncs) RefreshAuth(w http.ResponseWriter, r *http.Request) {
+	refreshToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "No refresh token", err)
+		return
+	}
+	user_id, err := u.cfg.database.GetRefreshToken(r.Context(), refreshToken)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			respondWithError(w, http.StatusUnauthorized, "No refresh token", err)
+			return
+		}
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
 
-    authToken, err := auth.MakeJWT(user_id, u.cfg.secret)
-    if err != nil{
-        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-        return
-    }
+	authToken, err := auth.MakeJWT(user_id, u.cfg.secret)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
 
-     respondWithJSON(w, http.StatusOK, chirpRefreshAuth{
-        Token: authToken,
-     })
+	respondWithJSON(w, http.StatusOK, chirpRefreshAuth{
+		Token: authToken,
+	})
 
 }
 
-func (u *userFuncs)RevokeRefreshToken(w http.ResponseWriter, r *http.Request){
-    refreshToken, err := auth.GetBearerToken(r.Header)
-    if err != nil{
-        respondWithError(w, http.StatusUnauthorized, "No refresh token", err)
-        return
-    }
+func (u *userFuncs) RevokeRefreshToken(w http.ResponseWriter, r *http.Request) {
+	refreshToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "No refresh token", err)
+		return
+	}
 
-    numRows, err := u.cfg.database.RevokeRefreshToken(r.Context(), refreshToken)
-    if err != nil{
-        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-        return
-    }
+	numRows, err := u.cfg.database.RevokeRefreshToken(r.Context(), refreshToken)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
 
-    if numRows==0{
-        respondWithError(w, http.StatusNotFound, "No token found", err)
-        return
-    }
-    respondWithStatus(w, http.StatusNoContent)
+	if numRows == 0 {
+		respondWithError(w, http.StatusNotFound, "No token found", err)
+		return
+	}
+	respondWithStatus(w, http.StatusNoContent)
 }
 
-func (u *userFuncs)UserUpdateSelf(w http.ResponseWriter, r *http.Request){
-    var user updateChirpUser
-    err := UnmarshalJSON(r.Body, &user)
-    if err != nil{
-        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-        return
-    }
+func (u *userFuncs) UserUpdateSelf(w http.ResponseWriter, r *http.Request) {
+	var user updateChirpUser
+	err := UnmarshalJSON(r.Body, &user)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
 
-    authToken, err := auth.GetBearerToken(r.Header)
-    if err != nil{
-        respondWithError(w, http.StatusUnauthorized, "No auth token", err)
-        return
-    }
+	authToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "No auth token", err)
+		return
+	}
 
-    userid, err := auth.ValidateJWT(authToken, u.cfg.secret)
-    if err != nil {
-        respondWithError(w, http.StatusUnauthorized, "Invalid auth token", err)
-        return
-    }
+	userid, err := auth.ValidateJWT(authToken, u.cfg.secret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid auth token", err)
+		return
+	}
 
-    passwordHash, err := auth.HashPassword(user.Password)
-    if err != nil{
-        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-        return
-    }
+	passwordHash, err := auth.HashPassword(user.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
 
-    params := database.UserUpdateSelfParams{
-        ID: userid,
-        Email: user.Email,
-        HashedPassword: passwordHash,
-    }
+	params := database.UserUpdateSelfParams{
+		ID:             userid,
+		Email:          user.Email,
+		HashedPassword: passwordHash,
+	}
 
-    result, err := u.cfg.database.UserUpdateSelf(r.Context(), params)
-    if err != nil{
-        respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-        return
-    }
+	result, err := u.cfg.database.UserUpdateSelf(r.Context(), params)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
 
-    respondWithJSON(w, http.StatusOK, chirpUser{
-        ID: result.ID,
-        CreatedAt: result.CreatedAt,
-        UpdatedAt: result.UpdatedAt,
-        Email: result.Email,
-        ChirpyRed: result.IsChirpyRed,
-    })
+	respondWithJSON(w, http.StatusOK, chirpUser{
+		ID:        result.ID,
+		CreatedAt: result.CreatedAt,
+		UpdatedAt: result.UpdatedAt,
+		Email:     result.Email,
+		ChirpyRed: result.IsChirpyRed,
+	})
 }
